@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Bus Tracker App</title>
+    <style>
+        /* CSS Variables for Themes */
+        :root, body.theme-purple-dark {
+            --bg-main: #121212;
+            --bg-card: #1e1e1e;
+            --text-main: #ffffff;
+            --text-muted: #777777;
+            --accent: #bb86fc;
+            --accent-text: #000000;
+            --border-color: #333333;
+            --btn-danger: #cf6679;
+        }
+        body.theme-purple-light {
+            --bg-main: #f5f5f5;
+            --bg-card: #ffffff;
+            --text-main: #000000;
+            --text-muted: #888888;
+            --accent: #9c27b0;
+            --accent-text: #ffffff;
+            --border-color: #cccccc;
+            --btn-danger: #d32f2f;
+        }
+        body.theme-blue-dark {
+            --bg-main: #0f172a; 
+            --bg-card: #1e293b; 
+            --text-main: #f8fafc;
+            --text-muted: #64748b;
+            --accent: #38bdf8; 
+            --accent-text: #000000;
+            --border-color: #334155;
+            --btn-danger: #fb7185;
+        }
+        body.theme-blue-light {
+            --bg-main: #f0f9ff; 
+            --bg-card: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --accent: #0284c7; 
+            --accent-text: #ffffff;
+            --border-color: #e2e8f0;
+            --btn-danger: #e11d48;
+        }
+
+        /* Base styles */
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            user-select: none; 
+            -webkit-user-select: none;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Frame Logic */
+        .frame {
+            display: none;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            position: relative;
+            padding-top: env(safe-area-inset-top); 
+        }
+        .frame.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Frame 1: List of Schedules */
+        #schedule-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .schedule-item {
+            padding: 15px 20px;
+            background-color: var(--bg-card);
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+            transition: transform 0.1s, opacity 0.1s, background-color 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid var(--border-color);
+        }
+        .schedule-item:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+        .schedule-name {
+            flex: 1;
+            padding: 10px 0; 
+        }
+        .reorder-controls {
+            display: flex;
+            gap: 8px;
+        }
+        .reorder-btn {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+        .reorder-btn:active {
+            transform: scale(0.9);
+        }
+
+        /* Circular Icons & Menus */
+        .fab {
+            position: fixed; 
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background-color: var(--accent);
+            color: var(--accent-text);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.3s;
+            z-index: 1000; 
+        }
+        .fab-left {
+            position: fixed; 
+            bottom: 30px;
+            left: 30px;
+            width: 55px;
+            height: 55px;
+            background-color: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.1s;
+            z-index: 1000; 
+        }
+        .fab:active, .fab-left:active, .round-icon:active {
+            transform: scale(0.92);
+        }
+
+        .left-menu {
+            position: fixed;
+            bottom: 95px;
+            left: 30px;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+        .menu-btn {
+            background-color: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 12px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            cursor: pointer;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 80%;
+            max-width: 320px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .theme-option {
+            padding: 15px;
+            text-align: center;
+            font-size: 16px;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            color: var(--text-main);
+        }
+        .theme-option:last-child {
+            border-bottom: none;
+        }
+        .theme-option:active {
+            background-color: var(--bg-main);
+        }
+
+        /* Frame 2: Form */
+        .form-container {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        input, textarea {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            width: 100%;
+            box-sizing: border-box;
+            outline: none;
+            user-select: text;
+            -webkit-user-select: text;
+        }
+        textarea {
+            flex: 1;
+            resize: none;
+        }
+        .bottom-right-actions {
+            position: fixed; 
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 10px;
+            z-index: 1000;
+            left: 30px; /* Allows wrapping if screen is tiny */
+        }
+        button.action-btn {
+            padding: 12px 18px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.1s;
+        }
+        button.action-btn:active {
+            transform: scale(0.95);
+        }
+        .btn-cancel, .btn-copy {
+            background-color: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid var(--border-color) !important;
+        }
+        .btn-save {
+            background-color: var(--accent);
+            color: var(--accent-text);
+        }
+        .btn-delete {
+            background-color: var(--btn-danger);
+            color: #fff;
+            display: none; 
+        }
+
+        /* Frame 3: Details */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .back-arrow {
+            font-size: 28px;
+            cursor: pointer;
+            padding: 0 10px;
+        }
+        .header-title {
+            font-size: 20px;
+            font-weight: bold;
+            flex: 1;
+            text-align: center;
+        }
+        .round-icon {
+            width: 40px;
+            height: 40px;
+            background-color: var(--bg-main);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        #time-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        /* Time Rows */
+        .time-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 10px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 18px;
+        }
+        .time-row.future {
+            color: var(--text-main);
+        }
+        .time-row.past {
+            color: var(--text-muted);
+        }
+        .time-left {
+            text-align: left;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+        }
+        .next-badge {
+            background-color: var(--accent);
+            color: var(--accent-text);
+            font-size: 12px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            margin-left: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .time-right {
+            text-align: right;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body class="theme-purple-dark">
+
+    <!-- FRAME 1: Main Screen (List) -->
+    <div id="frame1" class="frame active">
+        <div id="schedule-list"></div>
+        
+        <!-- Left FAB and Menu -->
+        <div class="fab-left" id="fab-left" onclick="handleFabLeftClick()">&#9881;</div>
+        <div class="left-menu" id="left-menu">
+            <button class="menu-btn" onclick="openThemeModal()">Themes</button>
+            <button class="menu-btn" onclick="toggleOrderMode()">Order</button>
+        </div>
+
+        <div class="fab" onclick="openFrame2()">+</div>
+    </div>
+
+    <!-- Theme Selection Modal -->
+    <div class="modal-overlay" id="theme-modal" onclick="closeThemeModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">Select Theme</div>
+            <div class="theme-option" onclick="setTheme('theme-blue-light')">Blue Light</div>
+            <div class="theme-option" onclick="setTheme('theme-blue-dark')">Blue Dark</div>
+            <div class="theme-option" onclick="setTheme('theme-purple-light')">Purple Light</div>
+            <div class="theme-option" onclick="setTheme('theme-purple-dark')">Purple Dark</div>
+        </div>
+    </div>
+
+    <!-- FRAME 2: Add/Edit Screen -->
+    <div id="frame2" class="frame">
+        <div class="form-container">
+            <input type="text" id="stop-name" placeholder="Bus Stop Name">
+            <textarea id="stop-times" placeholder="Times (e.g. 08:30, 12:30, 18:15)"></textarea>
+        </div>
+        <div class="bottom-right-actions">
+            <button class="action-btn btn-delete" id="btn-delete" onclick="deleteSchedule()">Delete</button>
+            <button class="action-btn btn-copy" onclick="copyTimes()">Copy</button>
+            <button class="action-btn btn-cancel" onclick="cancelEdit()">Cancel</button>
+            <button class="action-btn btn-save" onclick="saveSchedule()">Save</button>
+        </div>
+    </div>
+
+    <!-- FRAME 3: View Schedule Detail Screen -->
+    <div id="frame3" class="frame">
+        <div class="header">
+            <div class="back-arrow" onclick="goBackToFrame1()">&#8592;</div>
+            <div class="header-title" id="frame3-title">Stop Name</div>
+            <div class="round-icon" onclick="editCurrentSchedule()">*</div>
+        </div>
+        <div id="time-list"></div>
+    </div>
+
+    <script>
+        // App State
+        let schedules = JSON.parse(localStorage.getItem('busSchedules')) || [];
+        let currentEditingId = null;
+        let currentViewingId = null;
+        let countdownInterval = null;
+        let isOrderMode = false;
+
+        // --- Initialization & Themes ---
+        function initTheme() {
+            const savedTheme = localStorage.getItem('busAppTheme') || 'theme-purple-dark';
+            document.body.className = savedTheme;
+        }
+        initTheme();
+
+        function openThemeModal() {
+            document.getElementById('left-menu').style.display = 'none';
+            document.getElementById('theme-modal').style.display = 'flex';
+        }
+
+        function closeThemeModal(e) {
+            document.getElementById('theme-modal').style.display = 'none';
+        }
+
+        function setTheme(themeName) {
+            document.body.className = themeName;
+            localStorage.setItem('busAppTheme', themeName);
+            closeThemeModal();
+        }
+
+        // --- Local Storage Helper ---
+        function saveData() {
+            localStorage.setItem('busSchedules', JSON.stringify(schedules));
+        }
+
+        // --- Navigation Helper ---
+        function showFrame(frameNumber) {
+            document.querySelectorAll('.frame').forEach(f => f.classList.remove('active'));
+            document.getElementById('frame' + frameNumber).classList.add('active');
+        }
+
+        // --- FRAME 1 Logic ---
+        function handleFabLeftClick() {
+            if (isOrderMode) {
+                toggleOrderMode(); // Save and exit order mode
+            } else {
+                const menu = document.getElementById('left-menu');
+                menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+            }
+        }
+
+        function toggleOrderMode() {
+            isOrderMode = !isOrderMode;
+            document.getElementById('left-menu').style.display = 'none';
+            
+            const fabLeft = document.getElementById('fab-left');
+            if (isOrderMode) {
+                fabLeft.innerHTML = '&#10003;'; // Tick mark
+            } else {
+                fabLeft.innerHTML = '&#9881;'; // Cog wheel
+            }
+            renderFrame1();
+        }
+
+        function renderFrame1() {
+            const listContainer = document.getElementById('schedule-list');
+            listContainer.innerHTML = '';
+
+            if (schedules.length === 0) {
+                listContainer.innerHTML = '<div style="color:var(--text-muted); text-align:center; margin-top:50px;">No schedules yet. Tap + to add one.</div>';
+                return;
+            }
+
+            schedules.forEach((schedule, index) => {
+                const item = document.createElement('div');
+                item.className = 'schedule-item';
+                // Only allow opening if not in order mode
+                item.onclick = () => { if (!isOrderMode) openFrame3(schedule.id); };
+
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'schedule-name';
+                nameDiv.textContent = schedule.name;
+
+                item.appendChild(nameDiv);
+
+                if (isOrderMode) {
+                    const controlsDiv = document.createElement('div');
+                    controlsDiv.className = 'reorder-controls';
+
+                    if (index > 0) {
+                        const upBtn = document.createElement('button');
+                        upBtn.className = 'reorder-btn';
+                        upBtn.innerHTML = '&#8593;'; 
+                        upBtn.onclick = (e) => moveSchedule(index, -1, e);
+                        controlsDiv.appendChild(upBtn);
+                    }
+
+                    if (index < schedules.length - 1) {
+                        const downBtn = document.createElement('button');
+                        downBtn.className = 'reorder-btn';
+                        downBtn.innerHTML = '&#8595;'; 
+                        downBtn.onclick = (e) => moveSchedule(index, 1, e);
+                        controlsDiv.appendChild(downBtn);
+                    }
+                    item.appendChild(controlsDiv);
+                }
+
+                listContainer.appendChild(item);
+            });
+        }
+
+        function moveSchedule(index, direction, event) {
+            event.stopPropagation(); 
+            const newIndex = index + direction;
+            if (newIndex >= 0 && newIndex < schedules.length) {
+                const temp = schedules[index];
+                schedules[index] = schedules[newIndex];
+                schedules[newIndex] = temp;
+                saveData(); 
+                renderFrame1(); 
+            }
+        }
+
+        // --- FRAME 2 Logic ---
+        function openFrame2(editId = null) {
+            currentEditingId = editId;
+            const deleteBtn = document.getElementById('btn-delete');
+            document.getElementById('left-menu').style.display = 'none';
+
+            if (editId !== null) {
+                const schedule = schedules.find(s => s.id === editId);
+                document.getElementById('stop-name').value = schedule.name;
+                document.getElementById('stop-times').value = schedule.rawTimes;
+                deleteBtn.style.display = 'inline-block'; 
+            } else {
+                document.getElementById('stop-name').value = '';
+                document.getElementById('stop-times').value = '';
+                deleteBtn.style.display = 'none'; 
+            }
+            showFrame(2);
+        }
+
+        function copyTimes() {
+            const times = document.getElementById('stop-times').value;
+            if (!times) return;
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(times).then(() => {
+                    alert("Times copied to clipboard!");
+                });
+            } else {
+                // Fallback for older webviews
+                const textArea = document.createElement("textarea");
+                textArea.value = times;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    alert("Times copied to clipboard!");
+                } catch (err) {}
+                document.body.removeChild(textArea);
+            }
+        }
+
+        function cancelEdit() {
+            if (currentViewingId !== null) {
+                openFrame3(currentViewingId); 
+            } else {
+                goBackToFrame1();
+            }
+            currentEditingId = null;
+        }
+
+        function deleteSchedule() {
+            if (confirm("Are you sure you want to delete this schedule?")) {
+                schedules = schedules.filter(s => s.id !== currentEditingId);
+                saveData(); 
+                currentEditingId = null;
+                currentViewingId = null;
+                goBackToFrame1();
+            }
+        }
+
+        function saveSchedule() {
+            const nameInput = document.getElementById('stop-name').value.trim();
+            const timesInput = document.getElementById('stop-times').value.trim();
+
+            if (!nameInput) {
+                alert("Please enter a bus stop name.");
+                return;
+            }
+
+            const timesArray = timesInput.split(',')
+                .map(t => t.trim())
+                .filter(t => /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(t)); 
+
+            timesArray.sort((a, b) => {
+                let [h1, m1] = a.split(':').map(Number);
+                let [h2, m2] = b.split(':').map(Number);
+                return (h1 * 60 + m1) - (h2 * 60 + m2);
+            });
+
+            if (currentEditingId !== null) {
+                const index = schedules.findIndex(s => s.id === currentEditingId);
+                schedules[index] = { 
+                    ...schedules[index], 
+                    name: nameInput, 
+                    rawTimes: timesInput, 
+                    times: timesArray 
+                };
+            } else {
+                schedules.push({
+                    id: Date.now().toString(),
+                    name: nameInput,
+                    rawTimes: timesInput,
+                    times: timesArray
+                });
+            }
+
+            saveData(); 
+            currentEditingId = null;
+            currentViewingId = null;
+            goBackToFrame1();
+        }
+
+        // --- FRAME 3 Logic ---
+        function openFrame3(scheduleId) {
+            currentViewingId = scheduleId;
+            const schedule = schedules.find(s => s.id === scheduleId);
+            document.getElementById('frame3-title').textContent = schedule.name;
+            
+            renderTimes(true); // Pass true to indicate initial render (triggers scroll)
+            
+            if (countdownInterval) clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => renderTimes(false), 10000); 
+
+            showFrame(3);
+        }
+
+        function renderTimes(isInitialRender = false) {
+            if (!currentViewingId) return;
+            const schedule = schedules.find(s => s.id === currentViewingId);
+            const listContainer = document.getElementById('time-list');
+            listContainer.innerHTML = '';
+            
+            const now = new Date();
+            let nextBusElement = null;
+            let foundNextBus = false;
+
+            schedule.times.forEach(timeStr => {
+                const [hours, minutes] = timeStr.split(':').map(Number);
+                let busTime = new Date();
+                busTime.setHours(hours, minutes, 0, 0);
+
+                if (now - busTime > 12 * 60 * 60 * 1000) {
+                    busTime.setDate(busTime.getDate() + 1);
+                }
+
+                const row = document.createElement('div');
+                const timeCol = document.createElement('div');
+                timeCol.className = 'time-left';
+                timeCol.textContent = timeStr;
+
+                const countdownCol = document.createElement('div');
+                countdownCol.className = 'time-right';
+
+                if (busTime < now) {
+                    row.className = 'time-row past';
+                    countdownCol.textContent = ''; 
+                } else {
+                    row.className = 'time-row future';
+                    
+                    // Mark the FIRST future bus as "Next"
+                    if (!foundNextBus) {
+                        foundNextBus = true;
+                        nextBusElement = row;
+                        const badge = document.createElement('span');
+                        badge.className = 'next-badge';
+                        badge.textContent = 'Next';
+                        timeCol.appendChild(badge);
+                    }
+                    
+                    const diffMs = busTime - now;
+                    const diffMinsTotal = Math.floor(diffMs / 60000);
+                    const hrsLeft = Math.floor(diffMinsTotal / 60);
+                    const minsLeft = diffMinsTotal % 60;
+
+                    let timeText = '';
+                    if (hrsLeft > 0) {
+                        const hrWord = hrsLeft === 1 ? 'hour' : 'hours';
+                        const minWord = minsLeft === 1 ? 'min' : 'mins';
+                        timeText = `${hrsLeft} ${hrWord} ${minsLeft} ${minWord}`;
+                    } else {
+                        const minWord = minsLeft === 1 ? 'min' : 'mins';
+                        timeText = `${minsLeft} ${minWord}`;
+                    }
+                    countdownCol.textContent = timeText;
+                }
+
+                row.appendChild(timeCol);
+                row.appendChild(countdownCol);
+                listContainer.appendChild(row);
+            });
+
+            // Handle auto-scroll only on the first render of the frame
+            if (isInitialRender && nextBusElement) {
+                setTimeout(() => {
+                    nextBusElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            }
+        }
+
+        function editCurrentSchedule() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            openFrame2(currentViewingId);
+        }
+
+        function goBackToFrame1() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            currentViewingId = null;
+            
+            // Ensure order mode is off when returning from view
+            isOrderMode = false;
+            document.getElementById('fab-left').innerHTML = '&#9881;';
+            
+            renderFrame1();
+            showFrame(1);
+        }
+
+        // Initialize App
+        renderFrame1();
+
+    </script>
+</body>
+</html>
