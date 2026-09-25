@@ -265,7 +265,7 @@
             justify-content: flex-end;
             gap: 10px;
             z-index: 1000;
-            left: 30px; /* Allows wrapping if screen is tiny */
+            left: 30px; 
         }
         button.action-btn {
             padding: 12px 18px;
@@ -302,6 +302,8 @@
             padding: 20px;
             background-color: var(--bg-card);
             border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0; /* Prevents the header from shrinking or being pushed out */
+            z-index: 10;
         }
         .back-arrow {
             font-size: 28px;
@@ -331,6 +333,7 @@
             flex: 1;
             overflow-y: auto;
             padding: 20px;
+            position: relative;
         }
         
         /* Time Rows */
@@ -466,7 +469,7 @@
         // --- FRAME 1 Logic ---
         function handleFabLeftClick() {
             if (isOrderMode) {
-                toggleOrderMode(); // Save and exit order mode
+                toggleOrderMode(); 
             } else {
                 const menu = document.getElementById('left-menu');
                 menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
@@ -479,9 +482,9 @@
             
             const fabLeft = document.getElementById('fab-left');
             if (isOrderMode) {
-                fabLeft.innerHTML = '&#10003;'; // Tick mark
+                fabLeft.innerHTML = '&#10003;'; 
             } else {
-                fabLeft.innerHTML = '&#9881;'; // Cog wheel
+                fabLeft.innerHTML = '&#9881;'; 
             }
             renderFrame1();
         }
@@ -498,7 +501,6 @@
             schedules.forEach((schedule, index) => {
                 const item = document.createElement('div');
                 item.className = 'schedule-item';
-                // Only allow opening if not in order mode
                 item.onclick = () => { if (!isOrderMode) openFrame3(schedule.id); };
 
                 const nameDiv = document.createElement('div');
@@ -572,7 +574,6 @@
                     alert("Times copied to clipboard!");
                 });
             } else {
-                // Fallback for older webviews
                 const textArea = document.createElement("textarea");
                 textArea.value = times;
                 document.body.appendChild(textArea);
@@ -652,7 +653,7 @@
             const schedule = schedules.find(s => s.id === scheduleId);
             document.getElementById('frame3-title').textContent = schedule.name;
             
-            renderTimes(true); // Pass true to indicate initial render (triggers scroll)
+            renderTimes(true); 
             
             if (countdownInterval) clearInterval(countdownInterval);
             countdownInterval = setInterval(() => renderTimes(false), 10000); 
@@ -693,7 +694,6 @@
                 } else {
                     row.className = 'time-row future';
                     
-                    // Mark the FIRST future bus as "Next"
                     if (!foundNextBus) {
                         foundNextBus = true;
                         nextBusElement = row;
@@ -725,10 +725,16 @@
                 listContainer.appendChild(row);
             });
 
-            // Handle auto-scroll only on the first render of the frame
+            // FIXED AUTO-SCROLL LOGIC: Mathmatically target the scroll of the container ONLY
             if (isInitialRender && nextBusElement) {
                 setTimeout(() => {
-                    nextBusElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    const container = document.getElementById('time-list');
+                    // Calculate the position to perfectly center the target row in the scrollable area
+                    const scrollTarget = nextBusElement.offsetTop - (container.clientHeight / 2) + (nextBusElement.clientHeight / 2);
+                    container.scrollTo({
+                        top: scrollTarget,
+                        behavior: 'smooth'
+                    });
                 }, 100);
             }
         }
@@ -742,7 +748,6 @@
             if (countdownInterval) clearInterval(countdownInterval);
             currentViewingId = null;
             
-            // Ensure order mode is off when returning from view
             isOrderMode = false;
             document.getElementById('fab-left').innerHTML = '&#9881;';
             
